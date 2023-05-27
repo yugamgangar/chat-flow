@@ -5,8 +5,8 @@ export const NodeWrapper = styled.div`
     background-color: #fff;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     overflow: hidden;
-    min-height: 75px;
     border: ${props => props.border || "none"};
+    min-height: 75px;
     `;
 
 export const NodeHeader = styled.div`

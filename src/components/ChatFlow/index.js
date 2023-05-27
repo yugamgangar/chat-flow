@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import ReactFlow, {
     useReactFlow,
     useNodesState,
@@ -9,10 +9,10 @@ import ReactFlow, {
     Background
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { NODE_TYPES } from '../../constants';
+import toast, { Toaster } from 'react-hot-toast';
+import TextNode from '../FlowNodes/TextNode';
 import SidePanel from '../SidePanel';
-import { getUid } from '../../helper';
-import { toast } from '../Toast';
+import { getUid, validateFlow } from './ChatFlow.helper';
 import { FlowWrapper, FlowContainer, Navbar, NavbarToolsContainer, Button } from './ChatFlow.styled';
 
 
@@ -20,7 +20,6 @@ function ChatFlow() {
     const reactFlowWrapper = useRef(null);
     const [selectedNode, setSelectedNode] = useState(null);
     const [isBackupAvailable, setIsBackupAvailable] = useState(false)
-    const [isToastVisible, setIsToastVisible] = useState(false)
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
@@ -48,7 +47,6 @@ function ChatFlow() {
                 x: event.clientX - reactFlowBounds.left,
                 y: event.clientY - reactFlowBounds.top,
             });
-
             const newNode = {
                 id: getUid(),
                 type,
@@ -65,7 +63,14 @@ function ChatFlow() {
     const saveFlow = useCallback(() => {
         if (reactFlowInstance) {
             const flow = reactFlowInstance.toObject();
-            localStorage.setItem('chatflow-bckp', JSON.stringify(flow));
+            if (validateFlow(flow.nodes, flow.edges)) {
+                localStorage.setItem('chatflow-bckp', JSON.stringify(flow));
+                toast.success('Changes saved.')
+            }
+            else {
+                toast.error(`Cannot save flow.`);
+            }
+
         }
     }, [reactFlowInstance]);
 
@@ -77,29 +82,40 @@ function ChatFlow() {
             setNodes(flow.nodes || []);
             setEdges(flow.edges || []);
             setViewport({ x, y, zoom });
+            setIsBackupAvailable(false);
         }
     };
 
     useEffect(() => {
         if (localStorage.getItem('chatflow-bckp')) {
             setIsBackupAvailable(true);
-            toast.default('Backup is available');
+            toast('Backup is available');
         }
     }, []);
 
     function handleNodeClick(ev, node) {
         if (node) {
-            setNodes((nodes) => [...nodes, { ...node, data: { ...node.data, border: '1.5px solid #0A66C2' } }]);
+            setNodes((nodes) => nodes.map(currentNode => {
+                if (currentNode.id === node.id) {
+                    return { ...currentNode, data: { ...currentNode.data, border: '1.5px solid #0A66C2' } }
+                }
+                else {
+                    return { ...currentNode, data: { message: currentNode.data.message } }
+                }
+            }));
             setSelectedNode(node);
         }
         else {
+            setNodes((nodes) => nodes.map(currentNode => ({ ...currentNode, data: { message: currentNode.data.message } })));
             setSelectedNode(null);
         }
     }
 
+    const NODE_TYPES = useMemo(() => ({ textnode: TextNode }), []);
+
     return (
         <>
-            {/* <Toast show={isBackupAvailable}>Backup is available</Toast> */}
+            <Toaster />
             <Navbar>
                 <NavbarToolsContainer>
                     {isBackupAvailable ? (
